@@ -556,9 +556,9 @@ section { position: relative; z-index: 1; }
   transition: all 0.25s;
 }
 .component-card:hover {
-  border-color: rgba(124,109,250,0.4);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  border-color: rgba(124,109,250,0.6);
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 20px rgba(124,109,250,0.1);
 }
 .comp-name {
   font-family: 'DM Mono', monospace;
@@ -800,9 +800,9 @@ section { position: relative; z-index: 1; }
   pointer-events: none;
 }
 .feature-card:hover {
-  border-color: rgba(124,109,250,0.35);
-  transform: translateY(-6px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  border-color: rgba(124,109,250,0.5);
+  transform: translateY(-8px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 32px rgba(124,109,250,0.15);
 }
 .feature-icon {
   width: 48px; height: 48px;
@@ -854,6 +854,96 @@ footer {
   font-size: 11px;
   color: var(--muted);
   letter-spacing: 0.05em;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.footer-tag-link {
+  color: var(--accent2);
+  border-color: rgba(124,109,250,0.4);
+  background: rgba(124,109,250,0.15);
+}
+.footer-tag-link:hover {
+  background: rgba(124,109,250,0.3);
+  border-color: rgba(124,109,250,0.7);
+  color: white;
+  box-shadow: 0 0 16px rgba(124,109,250,0.3);
+}
+
+/* GLOW LINE under nav */
+nav::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 10%; right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(124,109,250,0.4), transparent);
+}
+
+/* HERO GLOW ORB */
+#hero::before {
+  content: '';
+  position: absolute;
+  top: 20%; left: 50%;
+  transform: translateX(-50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(124,109,250,0.08) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* RISK SCORE pulse animation */
+.risk-score-value {
+  animation: scoreGlow 3s ease infinite;
+}
+@keyframes scoreGlow {
+  0%,100% { filter: brightness(1); }
+  50% { filter: brightness(1.15); }
+}
+
+/* SHIMMER on stat values */
+.stat-value {
+  background: linear-gradient(90deg, var(--accent2), #c4b5fd, var(--accent2));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: 200% center; }
+}
+
+/* SCAN LINE effect on cards */
+.card-block {
+  position: relative;
+  overflow: hidden;
+}
+.card-block::before {
+  content: '';
+  position: absolute;
+  top: -100%; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(124,109,250,0.3), transparent);
+  animation: scanline 6s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanline {
+  to { top: 200%; }
+}
+
+/* NEON border on risk hero */
+.risk-hero {
+  position: relative;
+}
+.risk-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(124,109,250,0.3), transparent, rgba(124,109,250,0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
 }
 
 /* DIVIDER */
@@ -887,7 +977,7 @@ footer {
   <div class="nav-links">
     <a href="#upload">Анализ</a>
     <a href="#features">Возможности</a>
-    <a href="https://github.com" target="_blank">GitHub</a>
+    <a href="https://github.com/entelexiya/tenderai-1" target="_blank">GitHub</a>
     <button class="nav-btn" onclick="scrollToUpload()">Попробовать →</button>
   </div>
 </nav>
@@ -1085,7 +1175,7 @@ footer {
     <h2 class="section-title">Всё что нужно<br>для проверки тендера</h2>
   </div>
   <div class="features-grid reveal">
-    <div class="feature-card">
+    <div class="feature-card" style="animation-delay:0.05s">
       <div class="feature-icon">🧠</div>
       <div class="feature-title">ML модель на 800+ тендерах</div>
       <div class="feature-desc">IsolationForest + sentence-transformers обученный на реальных данных госзакупок РК</div>
@@ -1122,16 +1212,15 @@ footer {
 <footer>
   <div>
     <div class="footer-brand">TenderAI</div>
-    <div class="footer-copy">© 2024 · Туркестан, Казахстан · Local Impact Hackathon</div>
-    <div class="footer-copy" style="margin-top:4px;">$3.8B потери от коррупции ежегодно — мы это меняем.</div>
+    <div class="footer-copy">Туркестан, Казахстан · Local Impact Hackathon</div>
   </div>
   <div class="footer-tags">
+    <a class="footer-tag footer-tag-link" href="https://github.com/entelexiya/tenderai-1" target="_blank">⭐ GitHub</a>
     <div class="footer-tag">Закон РК №106-VIII</div>
     <div class="footer-tag">sentence-transformers</div>
     <div class="footer-tag">IsolationForest</div>
     <div class="footer-tag">800+ тендеров</div>
-    <div class="footer-tag">FastAPI</div>
-    <div class="footer-tag">HuggingFace Spaces</div>
+    <div class="footer-tag">FastAPI + HuggingFace</div>
   </div>
 </footer>
 
@@ -1222,7 +1311,7 @@ const DEMO_DATA = {
 // ============================================================
 // BACKEND CONFIG — замени на свой HuggingFace URL после деплоя
 // ============================================================
-const API_URL = 'https://entelexiya-tenderai-api.hf.space'; // например: 'https://USERNAME-tenderai-api.hf.space'
+const API_URL = null; // например: 'https://USERNAME-tenderai-api.hf.space'
 
 // ============================================================
 // CURSOR
@@ -1387,7 +1476,7 @@ async function handleFile(file) {
       const data = await response.json();
       // Normalize color field from backend (red/yellow/green → high/medium/low)
       data.color = data.color === 'red' ? 'high' : data.color === 'yellow' ? 'medium' : data.color === 'green' ? 'low' : data.color;
-      data.title = data.title || file.name.replace(/\.pdf$/i,'');
+      data.title = data.title || (data.requirements && data.requirements.product) || file.name.replace(/\.pdf$/i,'');
       result = data;
     } catch(e) {
       console.warn('Backend error, using heuristic:', e);
