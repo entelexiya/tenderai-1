@@ -1222,7 +1222,7 @@ const DEMO_DATA = {
 // ============================================================
 // BACKEND CONFIG — замени на свой HuggingFace URL после деплоя
 // ============================================================
-const API_URL = 'https://entelexiya-tenderai-api.hf.space/'; // например: 'https://USERNAME-tenderai-api.hf.space'
+const API_URL = null; // например: 'https://USERNAME-tenderai-api.hf.space'
 
 // ============================================================
 // CURSOR
@@ -1715,18 +1715,28 @@ function renderResults(data) {
     legalEl.appendChild(div);
   });
 
-  // Requirements
-  const reqIcons = { product: '📦', quantity: '🔢', price: '💰', deadline: '⏰', brand: '🏷️' };
-  const reqLabels = { product: 'Товар', quantity: 'Количество', price: 'Цена', deadline: 'Срок поставки', brand: 'Бренд' };
+  // Requirements — использует requirement_labels из бэкенда если есть
   const reqEl = document.getElementById('requirements-items');
   reqEl.innerHTML = '';
+  const labels = data.requirement_labels || {};
+  const fallbackIcons = { product: '📦', quantity: '📊', price: '💰', deadline: '⏰', brand: '🏷️',
+    delivery_deadline: '⏱️', delivery_place: '📍', customer: '🏛️', contest_number: '🔢',
+    advance: '💳', warranty: '🛡️', standard: '📋', model: '💻', article: '🔢',
+    submission_deadline: '📅', experience: '🏆', certificate: '📜' };
+  const fallbackLabels = { product: 'Предмет закупки', quantity: 'Количество', price: 'Цена',
+    delivery_deadline: 'Срок поставки', delivery_place: 'Место поставки', customer: 'Заказчик',
+    contest_number: 'Номер конкурса', advance: 'Аванс', brand: 'Бренд', warranty: 'Гарантия',
+    standard: 'Стандарт', model: 'Модель', article: 'Артикул', deadline: 'Срок поставки' };
   Object.entries(data.requirements).forEach(([key, val]) => {
+    if (!val) return;
+    const icon = (labels[key] && labels[key][0]) || fallbackIcons[key] || '📋';
+    const label = (labels[key] && labels[key][1]) || fallbackLabels[key] || key;
     const div = document.createElement('div');
     div.className = 'req-item';
     div.innerHTML = `
-      <div class="req-icon">${reqIcons[key] || '📋'}</div>
+      <div class="req-icon">${icon}</div>
       <div>
-        <div class="req-label">${reqLabels[key] || key}</div>
+        <div class="req-label">${label}</div>
         <div class="req-value">${val}</div>
       </div>
     `;
