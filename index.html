@@ -1220,6 +1220,11 @@ const DEMO_DATA = {
 };
 
 // ============================================================
+// BACKEND CONFIG — замени на свой HuggingFace URL после деплоя
+// ============================================================
+const API_URL = 'https://entelexiya-tenderai-api.hf.space/'; // например: 'https://USERNAME-tenderai-api.hf.space'
+
+// ============================================================
 // CURSOR
 // ============================================================
 const cursor = document.getElementById('cursor');
@@ -1325,9 +1330,286 @@ dropZone.addEventListener('click', () => document.getElementById('file-input').c
 function handleFileUpload(input) {
   if (input.files[0]) handleFile(input.files[0]);
 }
-function handleFile(file) {
-  // For demo we just show loading then high risk
-  runAnalysis('high');
+
+async function handleFile(file) {
+  scrollToUpload();
+
+  // Show loading UI immediately
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('dropZone').style.display = 'none';
+  document.querySelector('.demo-section').style.display = 'none';
+
+  ['step-1','step-2','step-3','step-4'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'loading-step';
+    el.querySelector('.step-icon').innerHTML = '<div class="step-spinner"></div>';
+  });
+
+  // Step 1: Parse PDF
+  activateLoadingStep(0);
+  let text = '';
+  try {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      text = await extractTextFromPDF(file);
+    } else {
+      text = await file.text();
+    }
+  } catch(e) {
+    text = file.name; // fallback to filename only
+  }
+
+  // Step 2: NLP
+  await delay(700);
+  activateLoadingStep(1);
+
+  // Step 3: ML Score
+  await delay(900);
+  activateLoadingStep(2);
+
+  // Step 4: Legal
+  await delay(700);
+  activateLoadingStep(3);
+
+  await delay(600);
+  markLoadingDone();
+
+  // Call real backend if available, else fallback to heuristic
+  let result;
+  if (API_URL) {
+    try {
+      const response = await fetch(`${API_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      // Normalize color field from backend (red/yellow/green → high/medium/low)
+      data.color = data.color === 'red' ? 'high' : data.color === 'yellow' ? 'medium' : data.color === 'green' ? 'low' : data.color;
+      data.title = data.title || file.name.replace(/\.pdf$/i,'');
+      result = data;
+    } catch(e) {
+      console.warn('Backend error, using heuristic:', e);
+      result = analyzeText(text, file.name);
+    }
+  } else {
+    result = analyzeText(text, file.name);
+  }
+
+  await delay(200);
+  document.getElementById('loading').style.display = 'none';
+  renderResults(result);
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function activateLoadingStep(i) {
+  const stepNames = ['step-1','step-2','step-3','step-4'];
+  if (i > 0) {
+    const prev = document.getElementById(stepNames[i-1]);
+    prev.className = 'loading-step done';
+    prev.querySelector('.step-icon').innerHTML = '✓';
+  }
+  if (i < stepNames.length) {
+    document.getElementById(stepNames[i]).className = 'loading-step active';
+    document.getElementById(stepNames[i]).querySelector('.step-icon').innerHTML = '<div class="step-spinner"></div>';
+  }
+}
+
+function markLoadingDone() {
+  const stepNames = ['step-1','step-2','step-3','step-4'];
+  const last = document.getElementById(stepNames[3]);
+  last.className = 'loading-step done';
+  last.querySelector('.step-icon').innerHTML = '✓';
+}
+
+async function extractTextFromPDF(file) {
+  // Load PDF.js from CDN dynamically
+  if (!window.pdfjsLib) {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let fullText = '';
+  for (let i = 1; i <= Math.min(pdf.numPages, 10); i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    fullText += content.items.map(item => item.str).join(' ') + '\n';
+  }
+  return fullText;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ============================================================
+// HEURISTIC ANALYSIS ENGINE
+// ============================================================
+function analyzeText(text, filename) {
+  const t = (text + ' ' + filename).toLowerCase();
+
+  // ---- SIGNALS ----
+  const BRANDS = [
+    'dell','hp','lenovo','apple','samsung','xiaomi','huawei','lg','sony','asus','acer',
+    'canon','epson','cisco','microsoft','intel','amd','nvidia','brother','xerox','kyocera'
+  ];
+  const RESTRICT_WORDS = [
+    'строго','исключительно','только','никаких аналогов','без аналогов',
+    'авторизованный дилер','официальный дилер','gold партнёр','platinum партнёр',
+    'единственный поставщик','эксклюзивный'
+  ];
+  const TIGHT_DEADLINES = [
+    '1 рабочий день','2 рабочих дня','1 календарный день','в течение суток',
+    '24 часа','48 часов','3 рабочих дня'
+  ];
+  const EXACT_PARAMS = [
+    /артикул\s+[a-z0-9\-]+/i, /модель\s+[a-z0-9\-]+/i, /серийный номер/i,
+    /part number/i, /точно соответствовать/i, /конкретной модели/i,
+    /[\d]{4,}[a-z]+[\d]*/i  // part number patterns
+  ];
+
+  // Count hits
+  const foundBrands = BRANDS.filter(b => t.includes(b));
+  const foundRestrict = RESTRICT_WORDS.filter(w => t.includes(w));
+  const foundDeadlines = TIGHT_DEADLINES.filter(d => t.includes(d));
+  const foundExact = EXACT_PARAMS.filter(r => r.test(t));
+
+  // Component scores
+  const brandScore = Math.min(100, foundBrands.length * 35);
+  const restrictScore = Math.min(100, foundRestrict.length * 40);
+  const deadlineScore = Math.min(100, foundDeadlines.length * 60);
+  const exactScore = Math.min(100, foundExact.length * 30);
+
+  // Text anomaly: short text or filename-only = suspicious
+  const textLen = text.trim().length;
+  const anomalyScore = textLen < 100 ? 30 :
+                       textLen < 500 ? 20 :
+                       (foundBrands.length + foundRestrict.length) > 3 ? 65 : 15;
+
+  // Total risk score (weighted)
+  const rawScore = (
+    anomalyScore * 0.15 +
+    brandScore   * 0.25 +
+    restrictScore* 0.30 +
+    deadlineScore* 0.20 +
+    exactScore   * 0.10
+  );
+  const risk_score = Math.round(Math.max(5, Math.min(99, rawScore)));
+
+  // Level
+  const color = risk_score >= 65 ? 'high' : risk_score >= 35 ? 'medium' : 'low';
+  const level = color === 'high' ? '🔴 ВЫСОКИЙ' : color === 'medium' ? '🟡 СРЕДНИЙ' : '🟢 НИЗКИЙ';
+
+  // Extract product name from text (first meaningful noun phrase)
+  const titleMatch = text.match(/(?:поставка|закупка|приобретение|тендер на)[^.]{5,60}/i);
+  const title = titleMatch
+    ? titleMatch[0].trim().replace(/\s+/g,' ')
+    : (filename.replace(/\.pdf$/i,'').replace(/[-_]/g,' ') || 'Анализ тендера');
+
+  // Recommendation
+  const recommendation =
+    color === 'high'
+      ? `Обнаружены признаки заточенности тендера. Найдено брендов: ${foundBrands.length}, слов-ограничителей: ${foundRestrict.length}. Рекомендуется юридическая проверка.`
+      : color === 'medium'
+      ? `Выявлены отдельные признаки риска. Уточните ТЗ и сроки поставки перед подачей заявки.`
+      : `Тендер соответствует стандартным требованиям. Явных нарушений не обнаружено.`;
+
+  // Build legal items
+  const legal = [];
+  if (foundBrands.length > 0) {
+    legal.push({
+      status: 'violation',
+      article: 'Закон РК № 106-VIII — Запрет на указание бренда',
+      message: `Обнаружены упоминания конкретных брендов без формулировки "или эквивалент".`,
+      found: foundBrands.slice(0,3).join(', '),
+      severity: 'high'
+    });
+  }
+  if (foundRestrict.length > 0) {
+    legal.push({
+      status: 'violation',
+      article: 'Закон РК № 106-VIII — Ограничение конкуренции',
+      message: `Слова-ограничители сужают круг потенциальных поставщиков.`,
+      found: foundRestrict.slice(0,2).join(', '),
+      severity: 'high'
+    });
+  }
+  if (foundDeadlines.length > 0) {
+    legal.push({
+      status: 'warning',
+      article: 'Закон РК № 106-VIII — Сроки поставки',
+      message: `Сжатые сроки могут делать тендер недоступным для большинства поставщиков.`,
+      found: foundDeadlines[0],
+      severity: 'medium'
+    });
+  }
+  if (foundExact.length > 0) {
+    legal.push({
+      status: 'warning',
+      article: 'Закон РК № 106-VIII — Точные технические параметры',
+      message: `Обнаружены артикулы или модели. Технические требования могут быть избыточно конкретны.`,
+      found: '',
+      severity: 'medium'
+    });
+  }
+  if (legal.length === 0) {
+    legal.push({ status: 'ok', article: 'Общая проверка', message: 'Явных нарушений в тексте не обнаружено.', found: '', severity: 'none' });
+  }
+
+  const violationCount = legal.filter(l => l.status === 'violation').length;
+  const legal_summary = {
+    level: violationCount >= 2 ? 'critical' : violationCount === 1 ? 'warning' : 'ok',
+    text: violationCount > 0 ? `${violationCount} нарушени${violationCount === 1 ? 'е' : 'я'} Закона РК` : 'Нарушений не обнаружено',
+    count: violationCount
+  };
+
+  // Suspicious sentences from real text
+  const sentences = text.split(/[.!?\n]/).map(s => s.trim()).filter(s => s.length > 20);
+  const suspicious_sentences = sentences.filter(s => {
+    const sl = s.toLowerCase();
+    return BRANDS.some(b => sl.includes(b)) || RESTRICT_WORDS.some(w => sl.includes(w));
+  }).slice(0, 4);
+
+  // Extract requirements from text
+  const priceMatch = text.match(/(\d[\d\s]{3,})\s*(?:тенге|тг|kzt)/i);
+  const qtyMatch = text.match(/(\d+)\s*(?:шт|единиц|комплект|набор)/i);
+  const deadlineMatch = text.match(/(\d+\s*(?:рабочих|календарных)\s*дн[её]?[й]?)/i);
+
+  const requirements = {
+    product: title.slice(0,50),
+    quantity: qtyMatch ? qtyMatch[0] : 'Не указано',
+    price: priceMatch ? priceMatch[0].trim() + ' тенге' : 'Не указано',
+    deadline: deadlineMatch ? deadlineMatch[0] : 'Не указано',
+    brand: foundBrands.length > 0 ? foundBrands[0].charAt(0).toUpperCase() + foundBrands[0].slice(1) : 'Любой'
+  };
+
+  return {
+    risk_score,
+    level,
+    color,
+    title: title.slice(0,80),
+    recommendation,
+    components: {
+      'Аномальность текста': anomalyScore,
+      'Бренды и модели': brandScore,
+      'Слова-ограничители': restrictScore,
+      'Жёсткие сроки': deadlineScore,
+      'Точные параметры': exactScore
+    },
+    suspicious_sentences,
+    legal,
+    legal_summary,
+    requirements,
+    winners: { found: false, supplier: null, total_wins: 0, note: 'История побед недоступна без бэкенда' }
+  };
 }
 
 // ============================================================
@@ -1339,7 +1621,7 @@ function loadDemo(type) {
 }
 
 // ============================================================
-// ANALYSIS FLOW
+// ANALYSIS FLOW (demo buttons)
 // ============================================================
 function runAnalysis(type) {
   document.getElementById('loading').style.display = 'block';
@@ -1347,40 +1629,25 @@ function runAnalysis(type) {
   document.getElementById('dropZone').style.display = 'none';
   document.querySelector('.demo-section').style.display = 'none';
 
-  // Reset steps
   ['step-1','step-2','step-3','step-4'].forEach(id => {
     const el = document.getElementById(id);
     el.className = 'loading-step';
     el.querySelector('.step-icon').innerHTML = '<div class="step-spinner"></div>';
   });
 
-  const stepNames = ['step-1','step-2','step-3','step-4'];
-  let current = 0;
-
-  function activateStep(i) {
-    if (i > 0) {
-      const prev = document.getElementById(stepNames[i-1]);
-      prev.className = 'loading-step done';
-      prev.querySelector('.step-icon').innerHTML = '✓';
-    }
-    if (i < stepNames.length) {
-      document.getElementById(stepNames[i]).className = 'loading-step active';
-      document.getElementById(stepNames[i]).querySelector('.step-icon').innerHTML = '<div class="step-spinner"></div>';
-    }
-  }
-
-  activateStep(0);
+  activateLoadingStep(0);
   const timings = [600, 900, 700, 600];
-  let delay = 0;
+  let totalDelay = 0;
   timings.forEach((t, i) => {
-    delay += t;
-    setTimeout(() => activateStep(i + 1), delay);
+    totalDelay += t;
+    setTimeout(() => activateLoadingStep(i + 1), totalDelay);
   });
+  setTimeout(markLoadingDone, totalDelay);
 
   setTimeout(() => {
     document.getElementById('loading').style.display = 'none';
     renderResults(DEMO_DATA[type]);
-  }, delay + 200);
+  }, totalDelay + 200);
 }
 
 // ============================================================
