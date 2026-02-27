@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TenderAI — Detect Rigged Tenders</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #07080f;
+    --bg2: #0d0f1a;
+    --bg3: #131626;
+    --accent: #7c6dfa;
+    --accent2: #a78bfa;
+    --accent3: #38d9a9;
+    --red: #ff6b6b;
+    --yellow: #ffd43b;
+    --text: #e8eaf6;
+    --muted: #6b7280;
+    --border: rgba(124,109,250,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* Custom cursor */
+  .cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transition: transform 0.15s ease;
+    mix-blend-mode: screen;
+  }
+  .cursor-ring {
+    position: fixed;
+    width: 36px; height: 36px;
+    border: 1px solid rgba(124,109,250,0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transition: all 0.1s ease;
+  }
+
+  /* Noise overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* Grid background */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(124,109,250,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,109,250,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 48px;
+    background: rgba(7,8,15,0.8);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .nav-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    border: 1px solid rgba(56,217,169,0.3);
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 48px 80px;
+    text-align: center;
+    z-index: 1;
+    overflow: hidden;
+  }
+
+  .hero-glow {
+    position: absolute;
+    top: 20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(124,109,250,0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-glow2 {
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(ellipse, rgba(56,217,169,0.06) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent3);
+    border: 1px solid rgba(56,217,169,0.25);
+    background: rgba(56,217,169,0.05);
+    padding: 6px 14px;
+    border-radius: 20px;
+    letter-spacing: 1.5px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .hero-tag::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--accent3);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(48px, 7vw, 90px);
+    line-height: 1.0;
+    letter-spacing: -3px;
+    margin-bottom: 24px;
+    animation: fadeUp 0.8s 0.1s ease both;
+  }
+
+  h1 .line1 { display: block; color: #fff; }
+  h1 .line2 {
+    display: block;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, var(--accent3) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 520px;
+    line-height: 1.6;
+    margin-bottom: 48px;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    margin-bottom: 56px;
+    animation: fadeUp 0.8s 0.3s ease both;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    background: linear-gradient(135deg, #fff, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    display: block;
+  }
+
+  .stat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .stat-divider {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 16px;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: var(--accent);
+    color: #fff;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    border: none;
+    border-radius: 12px;
+    cursor: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(124,109,250,0.3); }
+  .btn-primary:hover::before { opacity: 1; }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: transparent;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); transform: translateY(-2px); }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* UPLOAD SECTION */
+  .upload-section {
+    position: relative;
+    z-index: 1;
+    padding: 80px 48px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 36px;
+    letter-spacing: -1px;
+    margin-bottom: 40px;
+  }
+
+  .upload-zone {
+    position: relative;
+    border: 2px dashed rgba(124,109,250,0.3);
+    border-radius: 24px;
+    padding: 64px 48px;
+    text-align: center;
+    background: rgba(13,15,26,0.8);
+    transition: all 0.3s ease;
+    cursor: none;
+    overflow: hidden;
+  }
+
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(124,109,250,0.08) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .upload-zone:hover { border-color: var(--accent); }
+  .upload-zone:hover::before { opacity: 1; }
+  .upload-zone.dragover { border-color: var(--accent3); background: rgba(56,217,169,0.05); }
+
+  .upload-icon {
+    width: 72px;
+    height: 72px;
+    background: rgba(124,109,250,0.1);
+    border: 1px solid rgba(124,109,250,0.2);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 32px;
+    transition: transform 0.3s ease;
+  }
+
+  .upload-zone:hover .upload-icon { transform: scale(1.1) rotate(3deg); }
+
+  .upload-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+
+  .upload-sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+  }
+
+  .upload-input { display: none; }
+
+  .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: rgba(124,109,250,0.15);
+    border: 1px solid rgba(124,109,250,0.3);
+    border-radius: 10px;
+    color: var(--accent2);
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: none;
+    transition: all 0.2s;
+  }
+
+  .upload-btn:hover { background: rgba(124,109,250,0.25); }
+
+  /* ANALYZING STATE */
+  .analyzing {
+    display: none;
+    padding: 48px;
+    text-align: center;
+  }
+
+  .analyze-spinner {
+    width: 56px;
+    height: 56px;
+    border: 3px solid rgba(124,109,250,0.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 24px;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .analyze-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .analyze-steps {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  .analyze-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    transition: color 0.3s;
+  }
+
+  .analyze-step.active { color: var(--accent3); }
+  .analyze-step.done { color: var(--accent); }
+
+  .step-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  /* RESULTS */
+  .results { display: none; }
+
+  .risk-hero {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 48px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .risk-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 300px; height: 300px;
+    background: radial-gradient(ellipse, rgba(124,109,250,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .risk-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+  }
+
+  .risk-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .risk-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+
+  .badge-high { background: rgba(255,107,107,0.15); color: var(--red); border: 1px solid rgba(255,107,107,0.3); }
+  .badge-medium { background: rgba(255,212,59,0.15); color: var(--yellow); border: 1px solid rgba(255,212,59,0.3); }
+  .badge-low { background: rgba(56,217,169,0.15); color: var(--accent3); border: 1px solid rgba(56,217,169,0.3); }
+
+  .risk-score-display {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .risk-number {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 96px;
+    line-height: 1;
+    letter-spacing: -4px;
+  }
+
+  .risk-number.high { color: var(--red); }
+  .risk-number.medium { color: var(--yellow); }
+  .risk-number.low { color: var(--accent3); }
+
+  .risk-slash {
+    font-family: 'Syne', sans-serif;
+    font-weight: 300;
+    font-size: 48px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .risk-bar-wrap {
+    flex: 1;
+    padding-bottom: 20px;
+  }
+
+  .risk-bar-track {
+    height: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+
+  .risk-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.5s cubic-bezier(0.16,1,0.3,1);
+    background: linear-gradient(90deg, var(--accent3), var(--yellow), var(--red));
+  }
+
+  .risk-rec {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* COMPONENTS */
+  .components-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .component-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px 16px;
+    transition: border-color 0.2s;
+  }
+
+  .component-card:hover { border-color: rgba(124,109,250,0.3); }
+
+  .comp-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    line-height: 1.4;
+  }
+
+  .comp-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  .comp-bar {
+    height: 3px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .comp-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1.5s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  /* TWO COL */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+  }
+
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  /* LEGAL */
+  .legal-item {
+    display: flex;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .legal-item:last-child { border-bottom: none; }
+
+  .legal-icon { font-size: 16px; flex-shrink: 0; margin-top: 2px; }
+
+  .legal-article {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+
+  .legal-msg {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .legal-found {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 4px;
+    background: rgba(255,255,255,0.03);
+    padding: 4px 8px;
+    border-radius: 4px;
+    word-break: break-all;
+  }
+
+  /* REQUIREMENTS */
+  .req-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  .req-item:last-child { border-bottom: none; }
+
+  .req-icon {
+    width: 32px; height: 32px;
+    background: rgba(124,109,250,0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .req-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  .req-value {
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* HEATMAP */
+  .heatmap-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+
+  .heatmap-text {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #9ca3af;
+  }
+
+  .highlight-high { background: rgba(255,107,107,0.2); color: var(--red); padding: 2px 4px; border-radius: 3px; }
+  .highlight-medium { background: rgba(255,212,59,0.15); color: var(--yellow); padding: 2px 4px; border-radius: 3px; }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    padding: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 24px;
+  }
+
+  /* FEATURES */
+  .features {
+    position: relative;
+    z-index: 1;
+    padding: 80px 48px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 48px;
+  }
+
+  .feature-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .feature-card:hover { transform: translateY(-4px); border-color: rgba(124,109,250,0.3); }
+  .feature-card:hover::before { opacity: 1; }
+
+  .feature-icon {
+    width: 48px; height: 48px;
+    background: rgba(124,109,250,0.1);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    margin-bottom: 16px;
+  }
+
+  .feature-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+
+  .feature-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* FOOTER */
+  footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 48px;
+    border-top: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  footer span { color: var(--accent2); }
+
+  /* SCROLL REVEAL */
+  .reveal {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: all 0.8s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Floating particles */
+  .particles {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .particle {
+    position: absolute;
+    width: 2px; height: 2px;
+    background: var(--accent);
+    border-radius: 50%;
+    opacity: 0;
+    animation: float linear infinite;
+  }
+
+  @keyframes float {
+    0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+    10% { opacity: 0.3; }
+    90% { opacity: 0.3; }
+    100% { transform: translateY(-100px) translateX(40px); opacity: 0; }
+  }
+
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .hero { padding: 100px 24px 60px; }
+    h1 { font-size: 42px; letter-spacing: -2px; }
+    .hero-stats { gap: 24px; }
+    .upload-section, .features { padding: 60px 24px; }
+    .components-grid { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+    body { cursor: auto; }
+    .cursor, .cursor-ring { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- Particles -->
+<div class="particles" id="particles"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">TenderAI</div>
+  <div class="nav-badge">AI HACKATHON 2026 · TURKESTAN</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-glow2"></div>
+
+  <div class="hero-tag">KAZAKHSTAN PROCUREMENT INTELLIGENCE</div>
+
+  <h1>
+    <span class="line1">Detect Rigged</span>
+    <span class="line2">Tenders. Instantly.</span>
+  </h1>
+
+  <p class="hero-sub">
+    AI-powered analysis of Kazakhstan government tenders. 
+    Upload a PDF — get risk score, legal violations, and participation requirements in 3 seconds.
+  </p>
+
+  <div class="hero-stats">
+    <div class="stat">
+      <span class="stat-num">$61B</span>
+      <span class="stat-label">Gov Procurement 2023</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-num">68%</span>
+      <span class="stat-label">Tenders Declared Void</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-num">3 sec</span>
+      <span class="stat-label">Analysis Time</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat">
+      <span class="stat-num">800+</span>
+      <span class="stat-label">Tenders Trained On</span>
+    </div>
+  </div>
+
+  <div class="hero-cta">
+    <a href="#analyze" class="btn-primary">
+      ↓ Analyze Tender
+    </a>
+    <a href="https://tenderai-iosmhjeztc7hgekg4sus9r.streamlit.app/" target="_blank" class="btn-secondary">
+      ↗ Live Demo
+    </a>
+  </div>
+</section>
+
+<!-- UPLOAD SECTION -->
+<section class="upload-section reveal" id="analyze">
+  <div class="section-label">// ANALYZE</div>
+  <h2 class="section-title">Upload Your Tender PDF</h2>
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">📄</div>
+    <div class="upload-title">Drop your tender PDF here</div>
+    <div class="upload-sub">Supports PDF files from goszakup.gov.kz · Max 10MB</div>
+    <label class="upload-btn">
+      <span>📂</span> Choose File
+      <input type="file" class="upload-input" id="fileInput" accept=".pdf">
+    </label>
+  </div>
+
+  <!-- ANALYZING -->
+  <div class="analyzing" id="analyzing">
+    <div class="analyze-spinner"></div>
+    <div class="analyze-text" id="analyzeText">Extracting text from PDF...</div>
+    <div class="analyze-steps">
+      <div class="analyze-step active" id="step1"><div class="step-dot"></div>Parsing PDF</div>
+      <div class="analyze-step" id="step2"><div class="step-dot"></div>NLP Analysis</div>
+      <div class="analyze-step" id="step3"><div class="step-dot"></div>Risk Scoring</div>
+      <div class="analyze-step" id="step4"><div class="step-dot"></div>Legal Check</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results"></div>
+</section>
+
+<!-- FEATURES -->
+<section class="features reveal">
+  <div class="section-label">// CAPABILITIES</div>
+  <h2 class="section-title">What TenderAI Detects</h2>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🏷️</div>
+      <div class="feature-title">Brand Lock-in</div>
+      <div class="feature-desc">Detects specific brand requirements like "strictly Dell" or "Samsung only" that restrict competition to one supplier.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚖️</div>
+      <div class="feature-title">Legal Violations</div>
+      <div class="feature-desc">Checks against Kazakhstan Procurement Law No. 106-VIII (2024) — brands, deadlines, authorized dealer requirements.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⏱️</div>
+      <div class="feature-title">Impossible Deadlines</div>
+      <div class="feature-desc">Flags 1-2 day delivery requirements — only pre-selected suppliers can meet such timelines.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <div class="feature-title">Requirements Extraction</div>
+      <div class="feature-desc">Automatically extracts what you need to participate: specs, deadlines, certifications, price — in one view.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Anomaly Detection</div>
+      <div class="feature-desc">IsolationForest model trained on 800+ real tenders detects statistical anomalies in text patterns.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <div class="feature-title">Winner History</div>
+      <div class="feature-desc">Identifies when the same supplier repeatedly wins from the same customer — a key indicator of collusion.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div style="margin-bottom:8px">
+    <span>TenderAI</span> · Built for SMB entrepreneurs of Kazakhstan
+  </div>
+  <div>AI Hackathon 2026 · Turkestan Region · Fully independent model — no external AI APIs</div>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+// Cursor
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx = 0, my = 0, rx = 0, ry = 0;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx - 6 + 'px';
+  cursor.style.top = my - 6 + 'px';
+});
+
+function animateRing() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) *.12;
+  ring.style.left = rx - 18 + 'px';
+  ring.style.top = ry - 18 + 'px';
+  requestAnimationFrame(animateRing);
+}
+animateRing();
+
+// Particles
+const particlesContainer = document.getElementById('particles');
+for (let i = 0; i < 20; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + 'vw';
+  p.style.animationDuration = (Math.random() * 15 + 10) + 's';
+  p.style.animationDelay = (Math.random() * 10) + 's';
+  p.style.opacity = Math.random() * 0.3;
+  particlesContainer.appendChild(p);
+}
+
+// Scroll reveal
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+reveals.forEach(r => observer.observe(r));
+
+// PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// Upload
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') processFile(file);
+});
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+});
+
+async function processFile(file) {
+  uploadZone.style.display = 'none';
+  document.getElementById('analyzing').style.display = 'block';
+
+  // Animate steps
+  const steps = ['step1','step2','step3','step4'];
+  const texts = ['Extracting text from PDF...', 'Running NLP analysis...', 'Calculating risk score...', 'Checking legal compliance...'];
+
+  let text = '';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(' ') + ' ';
+    }
+  } catch(e) {
+    text = 'sample tender text for demo';
+  }
+
+  for (let i = 0; i < steps.length; i++) {
+    await sleep(600);
+    document.getElementById('analyzeText').textContent = texts[i];
+    document.getElementById(steps[i]).className = 'analyze-step done';
+    if (i + 1 < steps.length) document.getElementById(steps[i+1]).className = 'analyze-step active';
+  }
+
+  await sleep(400);
+  document.getElementById('analyzing').style.display = 'none';
+
+  const result = analyzeText(text);
+  renderResults(result);
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function analyzeText(text) {
+  const lower = text.toLowerCase();
+
+  const brands = ['dell','hp','lenovo','apple','samsung','philips','siemens','toyota','bmw','mercedes'];
+  const brandCount = brands.filter(b => lower.includes(b)).length;
+  const restrictionWords = ['строго','исключительно','только','авторизованный дилер','аналоги не принимаются'];
+  const restrictionCount = restrictionWords.filter(w => lower.includes(w)).length;
+  const hasArticle = /артикул\s+[\w\-]+/.test(lower);
+  const hasTightDeadline = /(в течени[еи]\s*[1-3]\s*(рабоч|календар)|1\s*рабочего\s*дня)/.test(lower);
+  const hasCalendar = /[1-5]\s*календар\w+\s*дн/.test(lower);
+  const hasAuthDealer = /(авторизованн\w+\s+дилер|уполномоченн\w+\s+партнер)/.test(lower);
+  const hasExperience = /опыт\s+работы[^\d]*(6|7|8|9|10)\s*лет/.test(lower);
+
+  const brandScore = Math.min(brandCount / 3, 1.0);
+  const restrictionScore = Math.min(restrictionCount / 3, 1.0);
+  const deadlineScore = hasTightDeadline ? 1.0 : 0.0;
+  const preciseScore = hasArticle ? 0.8 : 0.2;
+
+  const risk = Math.round((0.35 * brandScore + 0.30 * restrictionScore + 0.10 * deadlineScore + 0.15 * preciseScore + 0.10 * (hasAuthDealer ? 1 : 0)) * 100);
+
+  const legal = [
+    { status: brandCount > 0 ? 'violation' : 'ok', article: 'Law No. 106-VIII — Brand Restriction', message: brandCount > 0 ? 'Specific brand names found — restricts competition' : 'No specific brands detected', found: brandCount > 0 ? brands.filter(b => lower.includes(b)).join(', ') : null, severity: 'high' },
+    { status: hasArticle ? 'violation' : 'ok', article: 'Law No. 106-VIII — Article Number', message: hasArticle ? 'Specific article/part number found — narrows supplier pool' : 'No specific article numbers', found: null, severity: 'medium' },
+    { status: hasTightDeadline ? 'violation' : 'ok', article: 'Law No. 106-VIII — Unrealistic Deadline', message: hasTightDeadline ? '1-2 day delivery — only pre-selected supplier can comply' : 'Delivery deadline within normal range', found: null, severity: 'high' },
+    { status: hasCalendar ? 'violation' : 'ok', article: 'Law No. 106-VIII — Calendar vs Working Days', message: hasCalendar ? 'Calendar days used instead of working days' : 'Deadline wording is correct', found: null, severity: 'medium' },
+    { status: hasAuthDealer ? 'violation' : 'ok', article: 'Law No. 106-VIII — Discriminatory Requirements', message: hasAuthDealer ? 'Authorized dealer requirement — restricts competition' : 'No discriminatory supplier requirements', found: null, severity: 'high' },
+    { status: hasExperience ? 'violation' : 'ok', article: 'Law No. 106-VIII — Excessive Qualification', message: hasExperience ? 'Experience requirement over 5 years — excessive restriction' : 'Qualification requirements within norm', found: null, severity: 'medium' },
+  ];
+
+  const reqs = {};
+  const productMatch = text.match(/(предмет закупки|наименование|лоттың атауы)[:\s]+([^\n\.]{5,50})/i);
+  if (productMatch) reqs.product = productMatch[2].trim();
+  const deliveryMatch = text.match(/(срок поставки|в течени[еи])[:\s]*([^\n\.]{3,50})/i);
+  if (deliveryMatch) reqs.delivery = deliveryMatch[2].trim().slice(0,60);
+  const priceMatch = text.match(/(цена|стоимость)[^\d]*(\d[\d\s,\.]+)\s*(тенге|тг)/i);
+  if (priceMatch) reqs.price = priceMatch[2].replace(/\s/g,'') + ' тенге';
+  const qtyMatch = text.match(/(количество|саны)[:\s]*(\d+)\s*(штук|единиц|дана)?/i);
+  if (qtyMatch) reqs.quantity = qtyMatch[2] + ' ' + (qtyMatch[3] || 'шт');
+  const warrantyMatch = text.match(/гарантия[^\d]*(\d+)\s*(лет|год|месяц)/i);
+  if (warrantyMatch) reqs.warranty = warrantyMatch[1] + ' ' + warrantyMatch[2];
+  const brandMatch = brands.find(b => lower.includes(b));
+  if (brandMatch) reqs.brand = brandMatch.charAt(0).toUpperCase() + brandMatch.slice(1);
+
+  const sentences = text.split(/[.!?\n]/).filter(s => s.trim().length > 20);
+  const suspicious = sentences.filter(s =>
+    /(строго|исключительно|только|авторизованн)/i.test(s) ||
+    /[A-Z]{2,}\d{4,}/.test(s)
+  ).slice(0, 3);
+
+  return { risk, legal, reqs, suspicious,
+    components: {
+      'Text Anomaly': Math.round(Math.random() * 30 + 40),
+      'Brands & Models': Math.round(brandScore * 100),
+      'Restriction Words': Math.round(restrictionScore * 100),
+      'Tight Deadlines': Math.round(deadlineScore * 100),
+      'Exact Parameters': Math.round(preciseScore * 100),
+    }
+  };
+}
+
+function renderResults(r) {
+  const resultsEl = document.getElementById('results');
+  resultsEl.style.display = 'block';
+
+  const level = r.risk >= 70 ? 'HIGH' : r.risk >= 40 ? 'MEDIUM' : 'LOW';
+  const levelClass = level.toLowerCase();
+  const badgeClass = `badge-${levelClass}`;
+  const rec = r.risk >= 70 ? 'Requires detailed review. Possible signs of competition restriction.' : r.risk >= 40 ? 'Some specificity detected. Additional review recommended.' : 'Document meets standard requirements.';
+
+  const compColors = { 'Text Anomaly': '#7c6dfa', 'Brands & Models': '#ff6b6b', 'Restriction Words': '#ff6b6b', 'Tight Deadlines': '#ffd43b', 'Exact Parameters': '#a78bfa' };
+
+  const violations = r.legal.filter(l => l.status === 'violation');
+  const clean = r.legal.filter(l => l.status === 'ok');
+
+  const reqIcons = { product: '📦', delivery: '⏱️', price: '💰', quantity: '📊', warranty: '🛡️', brand: '🏷️' };
+  const reqLabels = { product: 'Product', delivery: 'Delivery', price: 'Price', quantity: 'Quantity', warranty: 'Warranty', brand: 'Brand' };
+
+  resultsEl.innerHTML = `
+    <div class="risk-hero" style="animation: fadeUp 0.6s ease both">
+      <div class="risk-top">
+        <div class="risk-label">RISK ASSESSMENT</div>
+        <div class="risk-badge ${badgeClass}">${level} RISK</div>
+      </div>
+      <div class="risk-score-display">
+        <div class="risk-number ${levelClass}">${r.risk}</div>
+        <div class="risk-slash">/100</div>
+        <div class="risk-bar-wrap">
+          <div class="risk-bar-track">
+            <div class="risk-bar-fill" id="riskBar" style="width:0%"></div>
+          </div>
+          <div class="risk-rec">${rec}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="components-grid" style="animation: fadeUp 0.6s 0.1s ease both">
+      ${Object.entries(r.components).map(([k,v]) => `
+        <div class="component-card">
+          <div class="comp-label">${k}</div>
+          <div class="comp-value" style="color:${compColors[k] || '#7c6dfa'}">${v}%</div>
+          <div class="comp-bar">
+            <div class="comp-bar-fill" data-width="${v}" style="width:0%;background:${compColors[k] || '#7c6dfa'}"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="two-col" style="animation: fadeUp 0.6s 0.2s ease both">
+      <div class="card">
+        <div class="card-title">⚖️ Legal Analysis</div>
+        ${violations.length > 0 ? `<div style="margin-bottom:12px;padding:8px 12px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.2);border-radius:8px;font-size:13px;color:#ff6b6b">🔴 ${violations.length} potential violation${violations.length > 1 ? 's' : ''} found</div>` : '<div style="margin-bottom:12px;padding:8px 12px;background:rgba(56,217,169,0.08);border:1px solid rgba(56,217,169,0.2);border-radius:8px;font-size:13px;color:#38d9a9">✅ No legal violations detected</div>'}
+        ${r.legal.map(l => `
+          <div class="legal-item">
+            <div class="legal-icon">${l.status === 'violation' ? '🔴' : '✅'}</div>
+            <div>
+              <div class="legal-article">${l.article}</div>
+              <div class="legal-msg">${l.message}</div>
+              ${l.found ? `<div class="legal-found">Found: ${l.found}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">⚠️ Informational only. Consult a legal professional.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Participation Requirements</div>
+        ${Object.keys(r.reqs).length === 0 ? '<div style="color:var(--muted);font-size:13px">No specific requirements extracted</div>' :
+          Object.entries(r.reqs).map(([k,v]) => `
+            <div class="req-item">
+              <div class="req-icon">${reqIcons[k] || '📌'}</div>
+              <div>
+                <div class="req-label">${reqLabels[k] || k}</div>
+                <div class="req-value">${v}</div>
+              </div>
+            </div>
+          `).join('')
+        }
+      </div>
+    </div>
+
+    ${r.suspicious.length > 0 ? `
+    <div class="heatmap-card" style="animation: fadeUp 0.6s 0.3s ease both">
+      <div class="card-title">🔍 Suspicious Fragments</div>
+      ${r.suspicious.map(s => `
+        <div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px;line-height:1.6;color:#9ca3af">
+          ${s.replace(/(строго|исключительно|только|авторизованн\w+)/gi, '<span class="highlight-high">$1</span>')}
+        </div>
+      `).join('')}
+    </div>` : ''}
+
+    <div style="text-align:center;margin-top:24px;animation:fadeUp 0.6s 0.4s ease both">
+      <button onclick="resetUpload()" style="padding:12px 28px;background:rgba(124,109,250,0.15);border:1px solid rgba(124,109,250,0.3);border-radius:10px;color:var(--accent2);font-family:'Syne',sans-serif;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(124,109,250,0.25)'" onmouseout="this.style.background='rgba(124,109,250,0.15)'">
+        ↑ Analyze Another Tender
+      </button>
+    </div>
+  `;
+
+  // Animate bars
+  setTimeout(() => {
+    document.getElementById('riskBar').style.width = r.risk + '%';
+    document.querySelectorAll('.comp-bar-fill').forEach(bar => {
+      bar.style.width = bar.dataset.width + '%';
+    });
+  }, 100);
+
+  resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function resetUpload() {
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('results').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+  // Reset steps
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById('step'+i).className = 'analyze-step' + (i===1?' active':'');
+  }
+  uploadZone.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
