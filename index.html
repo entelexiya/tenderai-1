@@ -956,6 +956,168 @@ nav::after {
 
 /* Number counter */
 .counter { display: inline-block; }
+
+/* ============================================================
+   COMPARE SECTION
+   ============================================================ */
+#compare {
+  padding: 80px 48px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+@media (max-width: 760px) { .compare-grid { grid-template-columns: 1fr; } }
+
+.compare-slot {
+  background: var(--bg2);
+  border: 1.5px dashed rgba(124,109,250,0.25);
+  border-radius: 20px;
+  padding: 28px;
+  transition: all 0.3s;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: none;
+  position: relative;
+  overflow: hidden;
+}
+.compare-slot:hover { border-color: rgba(124,109,250,0.5); background: rgba(124,109,250,0.05); }
+.compare-slot.loaded {
+  border-style: solid;
+  border-color: rgba(124,109,250,0.3);
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+  cursor: default;
+}
+.compare-slot-icon { font-size: 32px; margin-bottom: 12px; }
+.compare-slot-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.compare-slot-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+.compare-slot input[type=file] { display: none; }
+
+.compare-score-big {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -2px;
+  margin-bottom: 4px;
+}
+.compare-score-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.compare-tender-title {
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: var(--text);
+  line-height: 1.4;
+}
+.compare-level {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.compare-level.high { background: rgba(255,107,107,0.15); color: var(--red); border: 1px solid rgba(255,107,107,0.3); }
+.compare-level.medium { background: rgba(255,212,59,0.12); color: var(--yellow); border: 1px solid rgba(255,212,59,0.3); }
+.compare-level.low { background: rgba(56,217,169,0.12); color: var(--green); border: 1px solid rgba(56,217,169,0.3); }
+
+.compare-bar-wrap { width: 100%; margin-bottom: 20px; }
+.compare-bar-bg { height: 6px; background: rgba(255,255,255,0.06); border-radius: 100px; overflow: hidden; }
+.compare-bar-fill { height: 100%; border-radius: 100px; transition: width 1.2s cubic-bezier(0.23,1,0.32,1); width: 0; }
+
+.compare-components { width: 100%; }
+.compare-comp-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+}
+.compare-comp-row:last-child { border-bottom: none; }
+.compare-comp-name { color: var(--muted); flex: 1; }
+.compare-comp-val { font-weight: 500; min-width: 40px; text-align: right; }
+
+.compare-winner-badge {
+  display: flex; align-items: center; justify-content: center;
+  gap: 16px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 32px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.compare-winner-side { text-align: center; }
+.compare-winner-label {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+.compare-winner-text {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+}
+.compare-vs {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 24px;
+  color: var(--muted);
+}
+.compare-reset-btn {
+  background: rgba(255,107,107,0.1);
+  border: 1px solid rgba(255,107,107,0.25);
+  color: var(--red);
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  cursor: none;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+.compare-reset-btn:hover { background: rgba(255,107,107,0.2); }
+.compare-loading-overlay {
+  position: absolute; inset: 0;
+  background: rgba(13,15,26,0.85);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 20px;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  color: var(--accent2);
+  gap: 10px;
+}
+
 </style>
 </head>
 <body>
@@ -976,6 +1138,7 @@ nav::after {
   </div>
   <div class="nav-links">
     <a href="#upload">Анализ</a>
+    <a href="#compare">Сравнение</a>
     <a href="#features">Возможности</a>
     <a href="https://github.com/entelexiya/tenderai-1" target="_blank">GitHub</a>
     <button class="nav-btn" onclick="scrollToUpload()">Попробовать →</button>
@@ -1166,6 +1329,43 @@ nav::after {
   </div>
 </section>
 
+
+<div class="section-divider"></div>
+
+<!-- COMPARE -->
+<section id="compare">
+  <div class="reveal">
+    <div class="section-label">// сравнение тендеров</div>
+    <h2 class="section-title">Сравните два<br>тендера рядом</h2>
+    <p class="section-desc">Загрузите два PDF и система покажет их риски рядом</p>
+  </div>
+
+  <div class="compare-grid reveal" id="compare-grid">
+    <!-- SLOT A -->
+    <div class="compare-slot" id="compare-slot-a" onclick="document.getElementById('compare-file-a').click()">
+      <input type="file" id="compare-file-a" accept=".pdf,.txt" onchange="handleCompareFile('a', this)">
+      <div class="compare-slot-icon">📄</div>
+      <div class="compare-slot-title">Тендер A</div>
+      <div class="compare-slot-sub">Нажмите или перетащите PDF</div>
+    </div>
+    <!-- SLOT B -->
+    <div class="compare-slot" id="compare-slot-b" onclick="document.getElementById('compare-file-b').click()">
+      <input type="file" id="compare-file-b" accept=".pdf,.txt" onchange="handleCompareFile('b', this)">
+      <div class="compare-slot-icon">📄</div>
+      <div class="compare-slot-title">Тендер B</div>
+      <div class="compare-slot-sub">Нажмите или перетащите PDF</div>
+    </div>
+  </div>
+
+  <!-- COMPARE RESULT -->
+  <div id="compare-result" style="display:none;">
+    <div class="compare-winner-badge" id="compare-winner-badge"></div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="compare-reset-btn" onclick="resetCompare()">↺ Сравнить другие</button>
+    </div>
+  </div>
+</section>
+
 <div class="section-divider"></div>
 
 <!-- FEATURES -->
@@ -1311,7 +1511,7 @@ const DEMO_DATA = {
 // ============================================================
 // BACKEND CONFIG — замени на свой HuggingFace URL после деплоя
 // ============================================================
-const API_URL = 'https://entelexiya-tenderai-api.hf.space'; // например: 'https://USERNAME-tenderai-api.hf.space'
+const API_URL = 'https://entelexiya-tenderai-api.hf.space';
 
 // ============================================================
 // CURSOR
@@ -1881,6 +2081,142 @@ function resetAnalysis() {
 // ANIMATED COUNTERS (Hero stats)
 // ============================================================
 // Simple — already static text, no need for animation since they're always visible
+
+
+// ============================================================
+// COMPARE
+// ============================================================
+const compareData = { a: null, b: null };
+
+async function handleCompareFile(slot, input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const slotEl = document.getElementById(`compare-slot-${slot}`);
+
+  // Show loading overlay
+  const overlay = document.createElement('div');
+  overlay.className = 'compare-loading-overlay';
+  overlay.innerHTML = '<div class="step-spinner"></div> Анализируем...';
+  slotEl.appendChild(overlay);
+
+  let text = '';
+  try {
+    if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+      text = await extractTextFromPDF(file);
+    } else {
+      text = await file.text();
+    }
+  } catch(e) { text = file.name; }
+
+  let result;
+  if (API_URL) {
+    try {
+      const resp = await fetch(`${API_URL}/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      result = await resp.json();
+      const colorMap = { red: 'high', orange: 'medium', green: 'low' };
+      result.color = colorMap[result.color] || result.color;
+      result.title = result.title || (result.requirements && result.requirements.product) || file.name.replace(/\.pdf$/i,'');
+    } catch(e) { result = analyzeText(text, file.name); }
+  } else {
+    result = analyzeText(text, file.name);
+  }
+
+  compareData[slot] = result;
+  slotEl.removeChild(overlay);
+  renderCompareSlot(slot, result);
+
+  if (compareData.a && compareData.b) renderCompareResult();
+}
+
+function renderCompareSlot(slot, data) {
+  const slotEl = document.getElementById(`compare-slot-${slot}`);
+  slotEl.classList.add('loaded');
+  slotEl.onclick = null;
+
+  const compColors = { high: '#ff6b6b', medium: '#ffd43b', low: '#38d9a9' };
+  const color = compColors[data.color];
+
+  const compsHtml = Object.entries(data.components).map(([name, score]) => `
+    <div class="compare-comp-row">
+      <span class="compare-comp-name">${name}</span>
+      <span class="compare-comp-val" style="color:${color}">${score}</span>
+    </div>
+  `).join('');
+
+  slotEl.innerHTML = `
+    <div class="compare-score-big" style="color:${color}">${data.risk_score}</div>
+    <div class="compare-score-label">Risk Score</div>
+    <div class="compare-level ${data.color}">${data.level}</div>
+    <div class="compare-tender-title">${(data.title || '').slice(0,60)}</div>
+    <div class="compare-bar-wrap">
+      <div class="compare-bar-bg">
+        <div class="compare-bar-fill" style="background:${color}" id="cbar-${slot}"></div>
+      </div>
+    </div>
+    <div class="compare-components">${compsHtml}</div>
+  `;
+
+  setTimeout(() => {
+    const bar = document.getElementById(`cbar-${slot}`);
+    if (bar) bar.style.width = data.risk_score + '%';
+  }, 200);
+}
+
+function renderCompareResult() {
+  const a = compareData.a;
+  const b = compareData.b;
+  const resultEl = document.getElementById('compare-result');
+  const badgeEl = document.getElementById('compare-winner-badge');
+
+  const safer = a.risk_score <= b.risk_score ? 'A' : 'B';
+  const diff = Math.abs(a.risk_score - b.risk_score).toFixed(1);
+  const saferColor = safer === 'A'
+    ? (a.color === 'high' ? '#ff6b6b' : a.color === 'medium' ? '#ffd43b' : '#38d9a9')
+    : (b.color === 'high' ? '#ff6b6b' : b.color === 'medium' ? '#ffd43b' : '#38d9a9');
+
+  badgeEl.innerHTML = `
+    <div class="compare-winner-side">
+      <div class="compare-winner-label">Тендер A</div>
+      <div class="compare-winner-text" style="color:${a.color === 'high' ? '#ff6b6b' : a.color === 'medium' ? '#ffd43b' : '#38d9a9'}">${a.risk_score}</div>
+    </div>
+    <div class="compare-vs">VS</div>
+    <div class="compare-winner-side">
+      <div class="compare-winner-label">Тендер B</div>
+      <div class="compare-winner-text" style="color:${b.color === 'high' ? '#ff6b6b' : b.color === 'medium' ? '#ffd43b' : '#38d9a9'}">${b.risk_score}</div>
+    </div>
+    <div style="width:100%;text-align:center;padding-top:8px;border-top:1px solid var(--border);margin-top:8px;">
+      <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:15px;">
+        ✅ Тендер <span style="color:${saferColor}">${safer}</span> безопаснее на <span style="color:${saferColor}">${diff}</span> пунктов
+      </span>
+    </div>
+  `;
+
+  resultEl.style.display = 'block';
+  resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function resetCompare() {
+  compareData.a = null;
+  compareData.b = null;
+  document.getElementById('compare-result').style.display = 'none';
+
+  ['a','b'].forEach(slot => {
+    const slotEl = document.getElementById(`compare-slot-${slot}`);
+    slotEl.className = 'compare-slot';
+    slotEl.onclick = () => document.getElementById(`compare-file-${slot}`).click();
+    slotEl.innerHTML = `
+      <input type="file" id="compare-file-${slot}" accept=".pdf,.txt" onchange="handleCompareFile('${slot}', this)">
+      <div class="compare-slot-icon">📄</div>
+      <div class="compare-slot-title">Тендер ${slot.toUpperCase()}</div>
+      <div class="compare-slot-sub">Нажмите или перетащите PDF</div>
+    `;
+  });
+}
+
 </script>
 </body>
 </html>
