@@ -1,0 +1,87 @@
+"""Versioned, explainable review signals, not a legal verdict or probability."""
+from datetime import datetime, timezone
+import hashlib
+import re
+from .documents import validate_text
+
+VERSION = '2.0.0'
+BRAND = re.compile(r'\b(?:Dell|HP|Lenovo|Apple|Samsung|Philips|Siemens|Toyota|BMW|Mercedes|Xerox|Canon|Cisco|Huawei|Xiaomi|Asus|Acer|Intel|AMD|Sony|Epson)\b', re.I)
+EQUIVALENT = re.compile(r'или\s+(?:эквивалент|аналог)|(?:эквивалент|аналог)\w*\s+допуска\w*|немесе\s+балама|балама\w*\s+рұқсат', re.I)
+NEGATED_BRAND = re.compile(r'(?:бренд|марк\w*|производитель)\s+(?:\w+\s+){0,3}не\s+(?:требуется|указан|ограничен)|бренд\s+маңызды\s+емес', re.I)
+RESTRICTION = re.compile(r'аналоги\s+не\s+принимаются|никаких\s+аналогов|без\s+аналогов|не\s+допускается\s+замена|баламалар\s+қабылданбайды|баламаға\s+жол\s+берілмейді|\b(?:строго|исключительно|только|тек)\s+(?=(?:Dell|HP|Lenovo|Apple|Samsung|Philips|Siemens|Toyota|BMW|Mercedes|Xerox|Canon|Cisco|Huawei|Xiaomi|Asus|Acer|Intel|AMD|Sony|Epson)\b)', re.I)
+DEALER = re.compile(r'(?:авторизованн\w*|уполномоченн\w*|официальн\w*)\s+(?:дилер\w*|дистрибьютор\w*)|өкілетті\s+дилер', re.I)
+DAYS = re.compile(r'(?<!\d)(\d{1,4})\s*(?:(?:рабоч\w*|календар\w*|жұмыс|күнтізбелік)\s+)?(?:день|дня|дней|күн)\b', re.I)
+DELIVERY = re.compile(r'постав\w*|достав\w*|жеткіз\w*', re.I)
+POINTS = {'brand': 15, 'restriction': 30, 'dealer': 20, 'deadline': 20, 'experience': 15}
+LABELS = {'brand': 'Упоминание бренда', 'restriction': 'Ограничение аналогов', 'dealer': 'Требование дилерства', 'deadline': 'Короткий срок поставки', 'experience': 'Требование опыта'}
+ACTIONS = {
+    'brand': 'Уточните, допускается ли эквивалент и чем обосновано указание бренда.',
+    'restriction': 'Запросите обоснование ограничения и возможность предложить эквивалент.',
+    'dealer': 'Уточните необходимость статуса дилера и допустимые подтверждающие документы.',
+    'deadline': 'Проверьте точку отсчёта срока и возможность поставки в указанные дни.',
+    'experience': 'Уточните обоснование требуемого опыта для предмета закупки.',
+}
+
+
+def segments(text):
+    # Preserve decimals and initials; retain page-local source quotes.
+    return [s.strip() for s in re.split(r'\n+|(?<=[.!?;])\s+(?=[А-ЯӘҒҚҢӨҰҮҺІA-Z])', text) if s.strip()]
+
+
+def extract_requirements(text):
+    patterns = {
+        'Предмет закупки': r'(?:предмет\s+закупки|наименование\s+товара|лоттың\s+атауы|тауардың\s+атауы)\s*:?\s*([^\n;]{3,120})',
+        'Количество': r'(?:количество|кол-во|саны)\s*:?\s*(\d+\s*(?:штук|шт\.?|единиц|дана|наборов|комплектов)?)',
+        'Срок поставки': r'(?:срок\s+поставки|жеткізу\s+мерзімі)\s*:?\s*([^\n;]{3,100})',
+        'Цена / стоимость': r'(?:цена|стоимость|баға\w*)[^\d\n]{0,25}(\d[\d\s.,]*\s*(?:тенге|тг|₸|KZT))',
+    }
+    found = []
+    for label, pattern in patterns.items():
+        match = re.search(pattern, text, re.I)
+        if match:
+            found.append({'label': label, 'value': re.sub(r'\s+', ' ', match.group(1)).strip()})
+    return found
+
+
+def analyze(pages, filename='Документ', warnings=None):
+    warnings = list(warnings or [])
+    text = '\n'.join(p['text'] for p in pages)
+    validate_text(text)
+    findings = []
+    counts = {}
+    for page in pages:
+        for quote in segments(page['text']):
+            keys = []
+            if BRAND.search(quote) and not (EQUIVALENT.search(quote) or NEGATED_BRAND.search(quote)):
+                keys.append('brand')
+            if RESTRICTION.search(quote):
+                keys.append('restriction')
+            if DEALER.search(quote) and not re.search(r'не\s+требуется|не\s+обязател\w*|талап\s+етілмейді', quote, re.I):
+                keys.append('dealer')
+            if DELIVERY.search(quote) and any(1 <= int(m.group(1)) <= 3 for m in DAYS.finditer(quote)):
+                keys.append('deadline')
+            experience = re.search(r'(?:опыт\s+работы|тәжірибе)\s*(?:не\s+менее|от|кемінде)?\s*(\d+)\s*(?:лет|год\w*|жыл)', quote, re.I)
+            if experience and int(experience.group(1)) > 5:
+                keys.append('experience')
+            for key in keys:
+                counts[key] = counts.get(key, 0) + 1
+                if counts[key] <= 20:
+                    findings.append({'category': key, 'title': LABELS[key], 'page': page['number'], 'quote': quote[:1500], 'action': ACTIONS[key], 'severity': 'attention' if key == 'brand' else 'review'})
+    if any(n > 20 for n in counts.values()):
+        warnings.append('Показаны первые 20 фрагментов каждой категории. Приоритет учитывает все найденные категории.')
+    incomplete = any('Недостаточно текста' in w for w in warnings)
+    score = None if incomplete else sum(POINTS[k] for k in counts)
+    priority = 'incomplete' if incomplete else 'high' if score >= 50 else 'review' if score else 'none'
+    return {
+        'schema_version': 2, 'analysis_version': VERSION,
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'document': {'name': filename[:180], 'pages': len(pages), 'characters': len(text), 'sha256': hashlib.sha256(text.encode()).hexdigest()},
+        'mode': 'rules', 'score': score, 'priority': priority,
+        'summary': {'incomplete': 'Документ прочитан не полностью', 'high': 'Нужна подробная проверка условий', 'review': 'Есть условия, которые стоит уточнить', 'none': 'Настроенные признаки не обнаружены'}[priority],
+        'score_explanation': 'Индекс приоритета проверки, не вероятность нарушения. Фиксированные веса категорий; точность на независимой экспертной выборке ещё не измерена.',
+        'components': [{'key': k, 'label': LABELS[k], 'points': POINTS[k] if k in counts else 0, 'maximum': POINTS[k], 'count': counts.get(k, 0)} for k in POINTS],
+        'findings': findings, 'requirements': extract_requirements(text), 'warnings': warnings,
+        'limitations': ['Проверка по текстовым правилам не устанавливает нарушение закона и не заменяет экспертизу.', 'Отсутствие признаков не подтверждает безопасность закупки. Русские и казахские формулировки покрыты частично.', 'История поставщиков не подключена. Данные о победах и сговоре не формируются.'],
+        'supplier_history': {'status': 'unavailable'},
+        'ml': {'status': 'disabled', 'included_in_score': False},
+    }
