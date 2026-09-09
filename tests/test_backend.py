@@ -5,7 +5,7 @@ from pypdf import PdfWriter
 from pypdf.generic import DictionaryObject, NameObject, DecodedStreamObject
 from backend.analysis import analyze
 from backend.documents import DocumentError, extract_document, extract_bounded, MAX_BYTES
-from backend.main import app, model, slots
+from backend.main import app, slots
 
 BASE = 'Предмет закупки: бумага для офиса. Условия поставки согласуются с заказчиком.'
 
@@ -91,6 +91,13 @@ def test_detailed_technical_specification_is_visible():
     assert r['score'] == 30
 
 
+def test_neutral_tender_gets_manual_review_context():
+    r = result('Предмет закупки: бумага для офиса. Технические требования указаны в приложении. Срок поставки: 21 день.')
+    assert r['score'] == 0
+    assert r['summary'] == 'Автоматические признаки не найдены — проверьте условия вручную'
+    assert r['findings'][0]['category'] == 'document_context'
+
+
 def test_pages_and_partial_extraction():
     r=analyze([{'number':1,'text':BASE},{'number':12,'text':'Поставка строго Dell. Аналоги не принимаются.'}],warnings=['Недостаточно текста на страницах: 2.'])
     assert r['score'] is None and r['priority']=='incomplete'
@@ -121,8 +128,7 @@ def test_process_extraction():
 
 
 @pytest.fixture
-def client(monkeypatch):
-    monkeypatch.setattr(model,'enabled',False)
+def client():
     with TestClient(app) as c: yield c
 
 
@@ -133,11 +139,9 @@ def test_api_json_validation_and_no_echo(client):
     assert client.get('/api/health').json()['status']=='ready'
 
 
-def test_model_failure_has_no_result(client,monkeypatch):
-    monkeypatch.setattr(model,'enabled',True)
-    monkeypatch.setattr(model,'ready',False)
-    assert client.get('/api/health').status_code==503
-    assert client.post('/api/analyze-text',json={'text':BASE}).status_code==503
+def test_rule_engine_is_ready_without_ml(client):
+    health = client.get('/api/health').json()
+    assert health['status'] == 'ready' and health['mode'] == 'rules'
 
 
 def test_api_upload(client):

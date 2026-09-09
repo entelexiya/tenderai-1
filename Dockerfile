@@ -1,10 +1,9 @@
 FROM python:3.12-slim
-ENV PYTHONUNBUFFERED=1 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 ENABLE_ML=1
+ENV PYTHONUNBUFFERED=1 ENABLE_ML=0
 WORKDIR /app
-COPY backend/requirements.txt backend/requirements-ml.txt /app/backend/
-RUN pip install --no-cache-dir -r backend/requirements.txt -r backend/requirements-ml.txt --extra-index-url https://download.pytorch.org/whl/cpu
+COPY backend/requirements.txt /app/backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt
 COPY backend /app/backend
-RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python -m backend.download_model
 COPY index.html styles.css legacy.html legacy.css app.js config.js favicon.svg /app/
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser

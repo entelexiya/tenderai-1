@@ -5,4 +5,5 @@
 test-results
 tests
 backend/model_local
+backend/artifacts
 .env

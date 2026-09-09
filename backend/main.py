@@ -10,20 +10,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 from .analysis import analyze, VERSION
 from .documents import MAX_BYTES, MAX_CHARS, DocumentError, extract_bounded, validate_text
-from .ml import ExperimentalModel
 
 log = logging.getLogger('tenderai')
-model = ExperimentalModel()
 slots = threading.BoundedSemaphore(2)
 ROOT = Path(__file__).resolve().parent.parent
 
 
 @asynccontextmanager
 async def lifespan(app):
-    try:
-        model.load()
-    except Exception:
-        log.exception('Experimental model could not load; readiness disabled')
     yield
 
 
@@ -89,14 +83,10 @@ async def validation_error(request, exc):
     return JSONResponse({'detail': 'Проверьте формат запроса и длину текста.', 'code': 'validation'}, status_code=422)
 
 
-def ready():
-    return not model.enabled or model.ready
-
-
 @app.get('/health')
 @app.get('/api/health')
 def health():
-    return JSONResponse({'status': 'ready' if ready() else 'unavailable', 'schema_version': 2, 'analysis_version': VERSION, 'mode': 'rules_with_experimental_ml' if model.enabled else 'rules', 'ml_ready': model.ready}, status_code=200 if ready() else 503)
+    return {'status': 'ready', 'schema_version': 2, 'analysis_version': VERSION, 'mode': 'rules'}
 
 
 class TextRequest(BaseModel):
@@ -105,20 +95,13 @@ class TextRequest(BaseModel):
 
 
 def begin():
-    if not ready():
-        raise HTTPException(503, 'Модель не готова. Анализ не выполнен. Попробуйте позже.')
     if not slots.acquire(blocking=False):
         raise HTTPException(429, 'Сервер занят. Повторите запрос через несколько секунд.', headers={'Retry-After': '5'})
 
 
 def review(pages, name, warnings):
     result = analyze(pages, name, warnings)
-    try:
-        result['ml'] = model.inspect(pages)
-    except Exception:
-        log.exception('Model inference failed')
-        raise HTTPException(503, 'Не удалось выполнить анализ модели. Результат не сформирован.') from None
-    result['mode'] = 'rules_with_experimental_ml' if model.enabled else 'rules'
+    result['mode'] = 'rules'
     return result
 
 

@@ -55,6 +55,7 @@ def main():
         page.locator('#document-text').fill('Поставка бумаги и канцелярских принадлежностей для учебного класса.')
         page.route('**/api/analyze-text',lambda route:route.fulfill(status=503,content_type='application/json',body=json.dumps({'detail':'Модель не готова. Анализ не выполнен.'})))
         page.locator('#submit-button').click()
+        expect(page.locator('#error')).to_be_visible(timeout=30000)
         assert page.locator('#error').inner_text().strip()
         expect(page.locator('#result')).to_be_hidden()
         expect(page.locator('#report-count')).to_have_text('4')
