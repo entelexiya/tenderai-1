@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
@@ -10,7 +10,7 @@
     <meta name="color-scheme" content="light" />
     <title>TenderAI — разбор условий закупки</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="legacy.css" />
     <script src="config.js" defer></script>
     <script src="app.js" defer></script>
   </head>
@@ -18,70 +18,35 @@
     <a class="skip" href="#workspace">Перейти к проверке</a>
     <header class="site-header">
       <a class="brand" href="#" aria-label="TenderAI, главная"
-        ><span class="brand-mark" aria-hidden="true">T</span>Tender<span
-          class="brand-ai"
-          >AI</span
-        ></a
+        ><span class="brand-mark" aria-hidden="true">t.</span>TenderAI<span
+          class="brand-divider"
+        ></span
+        ><span class="brand-caption">Закупки, по существу</span></a
       >
       <nav aria-label="Основная навигация">
-        <a href="#method">Как это работает</a
+        <a href="#method">Как устроена проверка</a
         ><a href="#reports">Отчёты <span id="report-count">0</span></a>
       </nav>
     </header>
     <main>
       <section class="intro" aria-labelledby="intro-title">
-        <div class="hero-copy">
-          <span class="hero-badge">Для участников госзакупок Казахстана</span>
+        <div>
+          <p class="eyebrow">
+            <span class="small-rule"></span> Рабочий инструмент / Казахстан
+          </p>
           <h1 id="intro-title">
-            Проверьте тендер<br /><span>до подачи заявки</span>
+            Сначала условия.<br /><em>Потом решение.</em>
           </h1>
           <p class="intro-copy">
-            Загрузите документ — TenderAI найдёт спорные условия, покажет их в
-            тексте и подскажет, что уточнить у заказчика.
+            Разберите документацию до подачи заявки. Найдите условия, которые
+            стоит уточнить, и вернитесь к конкретному месту в документе.
           </p>
-          <div class="hero-actions">
-            <a class="button primary" href="#workspace">Проверить документ</a
-            ><a class="button secondary" href="#method">Как это работает</a>
-          </div>
-          <ul class="hero-benefits">
-            <li>PDF и текст</li>
-            <li>Цитаты из документа</li>
-            <li>Сохранение отчёта</li>
-          </ul>
         </div>
-        <div
-          class="hero-visual"
-          aria-label="Иллюстрация учебного разбора документа"
-        >
-          <div class="sample-document">
-            <div class="sample-top">
-              <span class="sample-icon" aria-hidden="true">≡</span>
-              <div>
-                <strong>Условия закупки</strong><span>Учебный пример</span>
-              </div>
-              <span class="pdf-tag">PDF</span>
-            </div>
-            <div class="paper-line long" aria-hidden="true"></div>
-            <div class="paper-line" aria-hidden="true"></div>
-            <div class="sample-highlight">
-              <span class="sample-label">Срок поставки</span>
-              <p>
-                Поставка в течение <strong>2 рабочих дней</strong> с момента
-                подписания договора.
-              </p>
-            </div>
-            <div class="paper-line long" aria-hidden="true"></div>
-            <div class="paper-line short" aria-hidden="true"></div>
-            <div class="sample-question">
-              <span class="question-icon" aria-hidden="true">?</span>
-              <div>
-                <strong>Стоит уточнить</strong>
-                <p>Успеете ли вы поставить товар в этот срок?</p>
-              </div>
-            </div>
-          </div>
-          <p class="visual-caption">Понятный вывод с опорой на ваш документ</p>
-        </div>
+        <aside class="intro-aside">
+          <span class="folio">01 — ДО ПОДАЧИ ЗАЯВКИ</span>
+          <p>Хороший вопрос<br />заказчику начинается<br />с точной цитаты.</p>
+          <a href="#method" class="text-link">Что проверяем ↗</a>
+        </aside>
       </section>
       <section
         id="workspace"
@@ -90,6 +55,7 @@
       >
         <div class="section-heading">
           <div>
+            <span class="section-number">01</span>
             <h2 id="workspace-title">Проверить документ</h2>
           </div>
           <span id="service-status" class="service-status" role="status"
@@ -201,7 +167,7 @@
             </form>
           </div>
           <aside class="review-guide">
-            <p class="eyebrow">Что мы проверяем</p>
+            <p class="eyebrow">На что обратим внимание</p>
             <ol>
               <li>
                 <span>01</span>
@@ -249,6 +215,7 @@
       >
         <div class="section-heading">
           <div>
+            <span class="section-number">02</span>
             <h2 id="result-title">Разбор документа</h2>
           </div>
           <button id="new-analysis" class="text-link" type="button">
@@ -270,7 +237,8 @@
       <section id="reports" class="reports" aria-labelledby="reports-title">
         <div class="section-heading">
           <div>
-            <h2 id="reports-title">Ваши отчёты</h2>
+            <span class="section-number">03</span>
+            <h2 id="reports-title">Отчёты этой сессии</h2>
           </div>
           <button id="clear-reports" class="text-link" type="button" hidden>
             Очистить отчёты
@@ -295,45 +263,41 @@
       <section id="method" class="method" aria-labelledby="method-title">
         <div class="section-heading">
           <div>
-            <h2 id="method-title">Как работает TenderAI</h2>
+            <span class="section-number">04</span>
+            <h2 id="method-title">Что стоит знать о проверке</h2>
           </div>
+          <span class="folio">МЕТОДИКА / 2.0</span>
         </div>
         <div class="method-grid">
           <article>
-            <span class="method-label">1</span>
-            <h3>Загрузите документ</h3>
+            <span class="method-label">ПОНЯТНЫЙ РЕЗУЛЬТАТ</span>
+            <h3>Каждый признак —<br />с фрагментом текста</h3>
             <p>
-              Выберите PDF с текстом или вставьте условия закупки. Проверка ищет
-              бренды, ограничения, требования к опыту и короткие сроки.
+              Правила ищут определённые формулировки на русском и казахском
+              языках. В отчёте — цитата, страница и вопрос, который можно задать
+              заказчику. Покрытие языков частичное.
             </p>
           </article>
           <article>
-            <span class="method-label">2</span>
-            <h3>Изучите найденные условия</h3>
+            <span class="method-label">БЕЗ ЛОЖНОЙ ТОЧНОСТИ</span>
+            <h3>Приоритет проверки,<br />а не вероятность</h3>
             <p>
-              Посмотрите цитаты и номера страниц. Для каждого признака есть
-              пояснение: что именно стоит уточнить у заказчика.
+              Индекс складывается из весов найденных категорий. Он помогает
+              упорядочить проверку, но не предсказывает сговор, исход закупки
+              или юридическую оценку. Точность ещё не измерена на независимой
+              экспертной выборке.
             </p>
           </article>
           <article>
-            <span class="method-label">3</span>
-            <h3>Сохраните результат</h3>
+            <span class="method-label">ЯВНЫЕ ОГРАНИЧЕНИЯ</span>
+            <h3>Непрочитанный файл —<br />не готовое заключение</h3>
             <p>
-              Скачайте отчёт или сохраните его в PDF через печать. Если
-              проверили два документа, сравните их условия на этой же странице.
+              Сканы требуют распознавания текста. История побед поставщиков не
+              подключена. Экспериментальный ML-показатель, если доступен,
+              выводится отдельно и не влияет на индекс.
             </p>
           </article>
         </div>
-        <details class="method-details">
-          <summary>Что сервис пока не умеет?</summary>
-          <p>
-            TenderAI не устанавливает нарушение закона. Русские и казахские
-            формулировки покрыты частично; точность на независимой экспертной
-            выборке ещё не измерена. Сканы требуют распознавания текста. История
-            поставщиков не подключена. Экспериментальная ML-модель не влияет на
-            итоговый индекс.
-          </p>
-        </details>
         <details class="method-details">
           <summary>Как складывается индекс</summary>
           <p>
@@ -349,7 +313,7 @@
     </main>
     <footer>
       <a class="brand" href="#">TenderAI</a>
-      <p>Понятный разбор условий закупки.</p>
+      <p>Меньше догадок. Больше конкретных вопросов.</p>
       <span>Предварительная проверка условий</span>
     </footer>
     <noscript>Для загрузки и проверки документов включите JavaScript.</noscript>

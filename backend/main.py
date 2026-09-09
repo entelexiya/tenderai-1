@@ -73,7 +73,7 @@ async def headers(request, call_next):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'no-referrer'
     response.headers['Cache-Control'] = 'no-store'
-    if request.url.path in ('/', '/index.html'):
+    if request.url.path in ('/', '/legacy.html'):
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://entelexiya-tenderai-api.hf.space; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
     return response
 
@@ -147,13 +147,17 @@ def analyze_file(file: UploadFile):
 
 
 @app.get('/')
-@app.get('/index.html')
 def index():
     return FileResponse(ROOT / 'index.html')
 
 
+@app.get('/legacy.html')
+def legacy_index():
+    return FileResponse(ROOT / 'legacy.html')
+
+
 @app.get('/{asset}')
 def assets(asset: str):
-    if asset not in {'styles.css', 'app.js', 'config.js', 'favicon.svg'}:
+    if asset not in {'styles.css', 'legacy.css', 'app.js', 'config.js', 'favicon.svg'}:
         raise HTTPException(404, 'Страница не найдена')
     return FileResponse(ROOT / asset)

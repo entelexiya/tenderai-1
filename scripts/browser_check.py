@@ -1,5 +1,6 @@
 """Real API smoke checks plus deterministic failure responses; no document uploads to third parties."""
 import json
+import os
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
 
@@ -13,7 +14,7 @@ def main():
         browser=p.chromium.launch(executable_path=CHROME,headless=True,args=['--no-sandbox'])
         page=browser.new_page(viewport={'width':1440,'height':1050},device_scale_factor=1)
         errors=[]; page.on('pageerror',lambda e:errors.append(str(e)))
-        page.goto('http://127.0.0.1:8000',wait_until='networkidle')
+        page.goto(os.getenv('TENDERAI_TEST_URL','http://127.0.0.1:8000'),wait_until='networkidle')
         expect(page.locator('#service-status')).to_contain_text('Доступен')
         page.screenshot(path=str(OUT/'desktop.png'),full_page=True)
         for width in [320,390,768,1024]:

@@ -4,7 +4,7 @@ from pathlib import Path
 from huggingface_hub import HfApi, CommitOperationAdd, CommitOperationDelete
 
 ROOT=Path(__file__).resolve().parent.parent
-FILES=['Dockerfile','README.md','index.html','styles.css','app.js','config.js','favicon.svg']
+FILES=['Dockerfile','README.md','index.html','styles.css','legacy.html','legacy.css','app.js','config.js','favicon.svg']
 FILES += ['backend/'+p.name for p in (ROOT/'backend').iterdir() if p.is_file() and p.suffix in {'.py','.txt'}]
 FILES += ['backend/artifacts/model.pkl','backend/artifacts/scaler.pkl']
 OLD=['main.py','predictor.py','extract_requirements.py','legal_compliance.py','winner_history.py','requirements.txt','model.pkl','scaler.pkl']

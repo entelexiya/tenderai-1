@@ -5,7 +5,7 @@ COPY backend/requirements.txt backend/requirements-ml.txt /app/backend/
 RUN pip install --no-cache-dir -r backend/requirements.txt -r backend/requirements-ml.txt --extra-index-url https://download.pytorch.org/whl/cpu
 COPY backend /app/backend
 RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 python -m backend.download_model
-COPY index.html styles.css app.js config.js favicon.svg /app/
+COPY index.html styles.css legacy.html legacy.css app.js config.js favicon.svg /app/
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 EXPOSE 7860
