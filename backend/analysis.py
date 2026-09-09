@@ -2,7 +2,10 @@
 from datetime import datetime, timezone
 import hashlib
 import re
-from .documents import validate_text
+try:  # Supports both package imports and a Vercel project rooted at backend/.
+    from .documents import validate_text
+except ImportError:  # pragma: no cover - Vercel backend-root runtime
+    from documents import validate_text
 
 VERSION = '2.1.0'
 BRAND = re.compile(r'\b(?:Dell|HP|Lenovo|Apple|Samsung|Philips|Siemens|Toyota|BMW|Mercedes|Xerox|Canon|Cisco|Huawei|Xiaomi|Asus|Acer|Intel|AMD|Sony|Epson)\b', re.I)

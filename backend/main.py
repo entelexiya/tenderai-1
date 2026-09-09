@@ -8,8 +8,12 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
-from .analysis import analyze, VERSION
-from .documents import MAX_BYTES, MAX_CHARS, DocumentError, extract_bounded, validate_text
+try:  # Supports both ``backend.main`` and Vercel's backend-root runtime.
+    from .analysis import analyze, VERSION
+    from .documents import MAX_BYTES, MAX_CHARS, DocumentError, extract_bounded, validate_text
+except ImportError:  # pragma: no cover - used only when backend/ is the project root
+    from analysis import analyze, VERSION
+    from documents import MAX_BYTES, MAX_CHARS, DocumentError, extract_bounded, validate_text
 
 log = logging.getLogger('tenderai')
 slots = threading.BoundedSemaphore(2)
