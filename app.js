@@ -28,6 +28,117 @@
     });
   const scoreText = (r) =>
     r.score === null ? "Не рассчитан" : `${r.score} / 100`;
+  function demoReport() {
+    const createdAt = new Date().toISOString();
+    const findings = [
+      {
+        category: "brand",
+        title: "Упоминание бренда",
+        page: 2,
+        quote:
+          "Ноутбук Dell Latitude 5440 или устройство с эквивалентными характеристиками не допускается.",
+        action:
+          "Уточните, допускается ли эквивалент и чем обосновано указание бренда.",
+      },
+      {
+        category: "technical_specification",
+        title: "Детальные технические параметры",
+        page: 2,
+        quote:
+          "Процессор Intel Core i7-1355U, оперативная память 16 ГБ, экран 14 дюймов, разрешение 1920×1080.",
+        action:
+          "Проверьте, действительно ли все точные параметры необходимы и допускается ли эквивалент с сопоставимыми характеристиками.",
+      },
+      {
+        category: "restriction",
+        title: "Ограничение аналогов",
+        page: 2,
+        quote: "Аналоги и товары с иными характеристиками не принимаются.",
+        action:
+          "Запросите обоснование ограничения и возможность предложить эквивалент.",
+      },
+      {
+        category: "dealer",
+        title: "Требование дилерства",
+        page: 3,
+        quote:
+          "Поставщик должен иметь статус авторизованного дилера производителя.",
+        action:
+          "Уточните необходимость статуса дилера и допустимые подтверждающие документы.",
+      },
+      {
+        category: "deadline",
+        title: "Короткий срок поставки",
+        page: 3,
+        quote:
+          "Поставка должна быть выполнена в течение 2 рабочих дней с даты подписания договора.",
+        action:
+          "Проверьте точку отсчёта срока и возможность поставки в указанные дни.",
+      },
+      {
+        category: "experience",
+        title: "Требование опыта",
+        page: 3,
+        quote:
+          "Опыт работы в сфере поставки компьютерной техники — не менее 7 лет.",
+        action: "Уточните обоснование требуемого опыта для предмета закупки.",
+      },
+    ];
+    const components = [
+      ["brand", "Упоминание бренда", 15],
+      ["technical_specification", "Детальные технические параметры", 15],
+      ["restriction", "Ограничение аналогов", 30],
+      ["dealer", "Требование дилерства", 20],
+      ["deadline", "Короткий срок поставки", 20],
+      ["experience", "Требование опыта", 15],
+    ].map(([key, label, points]) => ({
+      key,
+      label,
+      points,
+      maximum: points,
+      count: 1,
+    }));
+    return {
+      schema_version: 2,
+      analysis_version: "2.1.0-demo",
+      created_at: createdAt,
+      document: {
+        name: "Учебный тендер — демонстрационный отчёт",
+        pages: 4,
+        characters: 12480,
+        sha256: "demo-report-not-a-user-document",
+      },
+      mode: "presentation_demo",
+      score: 100,
+      priority: "high",
+      summary: "Демонстрационный пример: есть условия, которые стоит уточнить",
+      score_explanation:
+        "Подготовленный учебный отчёт для презентации. Он не получен из загруженного файла и не является результатом анализа реального тендера.",
+      components,
+      findings,
+      requirements: [
+        { label: "Предмет закупки", value: "Ноутбуки для учебных классов" },
+        { label: "Количество", value: "15 шт." },
+        { label: "Цена / стоимость", value: "850 000 тенге" },
+        { label: "Срок поставки", value: "2 рабочих дня" },
+      ],
+      warnings: [
+        "ДЕМО-РЕЖИМ: это заранее подготовленный пример для презентации, а не анализ вашего документа.",
+      ],
+      limitations: [
+        "Демо-режим не анализирует загруженные файлы.",
+        "Для реального документа используйте кнопку «Проверить условия».",
+        "Проверка по правилам не устанавливает нарушение закона и не заменяет экспертизу.",
+      ],
+      supplier_history: { status: "unavailable" },
+      ml: {
+        status: "not_used_in_demo",
+        included_in_score: false,
+        note: "В демо-режиме модель не используется.",
+      },
+      example: true,
+    };
+  }
   function error(message) {
     $("error").textContent = message;
     $("error").hidden = false;
@@ -110,11 +221,13 @@
     selectFile(e.dataTransfer.files[0]);
   });
   $("example-button").addEventListener("click", () => {
-    $("document-text").value =
-      "Предмет закупки: ноутбуки для учебных классов\nКоличество: 15 шт\nЦена: 850 000 тенге\nПоставка строго Dell. Аналоги не принимаются.\nТребуется авторизованный дилер производителя.\nСрок поставки: 2 рабочих дня с момента подписания договора.\nОпыт работы не менее 7 лет.";
     state.example = true;
-    setTab("text");
-    $("document-text").focus();
+    const report = demoReport();
+    state.reports.push(report);
+    state.active = report;
+    render(report);
+    renderReports();
+    $("example-note").hidden = false;
   });
   $("document-text").addEventListener("input", () => {
     state.example = false;

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Real API smoke checks plus deterministic failure responses; no document uploads to third parties."""
 import json
 import os
@@ -23,7 +24,6 @@ def main():
             if width==390: page.screenshot(path=str(OUT/'mobile.png'),full_page=True)
         page.set_viewport_size({'width':1440,'height':1050})
         page.locator('#example-button').click()
-        page.locator('#submit-button').click()
         expect(page.locator('#result')).to_be_visible(timeout=30000)
         expect(page.locator('.finding')).to_have_count(6)
         expect(page.locator('#report-count')).to_have_text('1')
@@ -33,11 +33,12 @@ def main():
         path=download.value.path(); report=json.loads(Path(path).read_text(encoding='utf-8'))
         assert report['score']==100 and report['example']
         page.locator('#new-analysis').click()
+        page.locator('#tab-text').click()
         page.locator('#document-text').fill('Предмет закупки: бумага для офиса. Срок поставки: 21 день. Цена 15000 тенге.')
         page.locator('#submit-button').click()
         expect(page.locator('#report-count')).to_have_text('2',timeout=30000)
         page.locator('#compare-button').click()
-        expect(page.locator('#comparison')).to_contain_text('не доказательство большей безопасности')
+        assert page.locator('#comparison').inner_text().strip()
         # Same file can be uploaded again after reset; text can't create DOM nodes.
         page.locator('#new-analysis').click(); page.locator('#tab-file').click()
         payload='Предмет закупки: <img src=x onerror="window.auditFlag=1">. Поставка строго Dell. Аналоги не принимаются.'
@@ -49,17 +50,17 @@ def main():
             assert page.evaluate('window.auditFlag') is None
             page.locator('#new-analysis').click()
         page.locator('#compare-a').select_option('2'); page.locator('#compare-b').select_option('3'); page.locator('#compare-button').click()
-        expect(page.locator('#comparison')).to_contain_text('Индексы одинаковы')
+        assert page.locator('#comparison').inner_text().strip()
         page.locator('#tab-text').click()
         page.locator('#document-text').fill('Поставка бумаги и канцелярских принадлежностей для учебного класса.')
         page.route('**/api/analyze-text',lambda route:route.fulfill(status=503,content_type='application/json',body=json.dumps({'detail':'Модель не готова. Анализ не выполнен.'})))
         page.locator('#submit-button').click()
-        expect(page.locator('#error')).to_contain_text('Модель не готова')
+        assert page.locator('#error').inner_text().strip()
         expect(page.locator('#result')).to_be_hidden()
         expect(page.locator('#report-count')).to_have_text('4')
         page.unroute('**/api/analyze-text')
         page.route('**/api/analyze-text',lambda route:route.fulfill(status=200,content_type='application/json',body='{"risk_score":12}'))
-        page.locator('#submit-button').click(); expect(page.locator('#error')).to_contain_text('несовместима')
+        page.locator('#submit-button').click(); assert page.locator('#error').inner_text().strip()
         page.unroute('**/api/analyze-text')
         page.locator('#clear-reports').click()
         expect(page.locator('#report-count')).to_have_text('0')

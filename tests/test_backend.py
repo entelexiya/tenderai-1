@@ -84,6 +84,13 @@ def test_price_and_repeated_signals():
     assert r['score']==45
 
 
+def test_detailed_technical_specification_is_visible():
+    r = result('Компьютер. Процессор: Intel Core i3-тен төмен емес. Оперативная память: 16 ГБ.')
+    categories = {finding['category'] for finding in r['findings']}
+    assert {'brand', 'technical_specification'} <= categories
+    assert r['score'] == 30
+
+
 def test_pages_and_partial_extraction():
     r=analyze([{'number':1,'text':BASE},{'number':12,'text':'Поставка строго Dell. Аналоги не принимаются.'}],warnings=['Недостаточно текста на страницах: 2.'])
     assert r['score'] is None and r['priority']=='incomplete'

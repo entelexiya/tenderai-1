@@ -4,7 +4,7 @@ import hashlib
 import re
 from .documents import validate_text
 
-VERSION = '2.0.0'
+VERSION = '2.1.0'
 BRAND = re.compile(r'\b(?:Dell|HP|Lenovo|Apple|Samsung|Philips|Siemens|Toyota|BMW|Mercedes|Xerox|Canon|Cisco|Huawei|Xiaomi|Asus|Acer|Intel|AMD|Sony|Epson)\b', re.I)
 EQUIVALENT = re.compile(r'или\s+(?:эквивалент|аналог)|(?:эквивалент|аналог)\w*\s+допуска\w*|немесе\s+балама|балама\w*\s+рұқсат', re.I)
 NEGATED_BRAND = re.compile(r'(?:бренд|марк\w*|производитель)\s+(?:\w+\s+){0,3}не\s+(?:требуется|указан|ограничен)|бренд\s+маңызды\s+емес', re.I)
@@ -12,10 +12,15 @@ RESTRICTION = re.compile(r'аналоги\s+не\s+принимаются|ник
 DEALER = re.compile(r'(?:авторизованн\w*|уполномоченн\w*|официальн\w*)\s+(?:дилер\w*|дистрибьютор\w*)|өкілетті\s+дилер', re.I)
 DAYS = re.compile(r'(?<!\d)(\d{1,4})\s*(?:(?:рабоч\w*|календар\w*|жұмыс|күнтізбелік)\s+)?(?:день|дня|дней|күн)\b', re.I)
 DELIVERY = re.compile(r'постав\w*|достав\w*|жеткіз\w*', re.I)
-POINTS = {'brand': 15, 'restriction': 30, 'dealer': 20, 'deadline': 20, 'experience': 15}
-LABELS = {'brand': 'Упоминание бренда', 'restriction': 'Ограничение аналогов', 'dealer': 'Требование дилерства', 'deadline': 'Короткий срок поставки', 'experience': 'Требование опыта'}
+TECHNICAL_SPEC = re.compile(
+    r'(?:процессор|processor|жедел\s+жад|оперативн\w*\s+памят|накопител\w*|диск\w*|экран\w*|монитор\w*|разрешени\w*|ядр\w*|Intel\s+Core|AMD\s+Ryzen|Core\s+i[3579]|i[3579][-–]\d{3,}|\d+\s*(?:ГГц|ГБ|МБ|Гц|дюйм|мм|кг)|\d{3,}[x×]\d{3,})',
+    re.I,
+)
+POINTS = {'brand': 15, 'technical_specification': 15, 'restriction': 30, 'dealer': 20, 'deadline': 20, 'experience': 15}
+LABELS = {'brand': 'Упоминание бренда', 'technical_specification': 'Детальные технические параметры', 'restriction': 'Ограничение аналогов', 'dealer': 'Требование дилерства', 'deadline': 'Короткий срок поставки', 'experience': 'Требование опыта'}
 ACTIONS = {
     'brand': 'Уточните, допускается ли эквивалент и чем обосновано указание бренда.',
+    'technical_specification': 'Проверьте, действительно ли все точные параметры необходимы и допускается ли эквивалент с сопоставимыми характеристиками.',
     'restriction': 'Запросите обоснование ограничения и возможность предложить эквивалент.',
     'dealer': 'Уточните необходимость статуса дилера и допустимые подтверждающие документы.',
     'deadline': 'Проверьте точку отсчёта срока и возможность поставки в указанные дни.',
@@ -54,6 +59,8 @@ def analyze(pages, filename='Документ', warnings=None):
             keys = []
             if BRAND.search(quote) and not (EQUIVALENT.search(quote) or NEGATED_BRAND.search(quote)):
                 keys.append('brand')
+            if TECHNICAL_SPEC.search(quote):
+                keys.append('technical_specification')
             if RESTRICTION.search(quote):
                 keys.append('restriction')
             if DEALER.search(quote) and not re.search(r'не\s+требуется|не\s+обязател\w*|талап\s+етілмейді', quote, re.I):
@@ -70,7 +77,7 @@ def analyze(pages, filename='Документ', warnings=None):
     if any(n > 20 for n in counts.values()):
         warnings.append('Показаны первые 20 фрагментов каждой категории. Приоритет учитывает все найденные категории.')
     incomplete = any('Недостаточно текста' in w for w in warnings)
-    score = None if incomplete else sum(POINTS[k] for k in counts)
+    score = None if incomplete else min(100, sum(POINTS[k] for k in counts))
     priority = 'incomplete' if incomplete else 'high' if score >= 50 else 'review' if score else 'none'
     return {
         'schema_version': 2, 'analysis_version': VERSION,
